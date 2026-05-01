@@ -26,8 +26,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _loadProducts() async {
     final response = await ApiService.get('/products');
     if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List;
+      // Convertir price_fcfa en double
+      final products = data.map((p) {
+        p['price_fcfa'] = double.tryParse(p['price_fcfa'].toString()) ?? 0.0;
+        return p;
+      }).toList();
       setState(() {
-        _products = jsonDecode(response.body);
+        _products = products;
         _isLoading = false;
       });
     }
@@ -37,7 +43,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     double total = 0;
     _cart.forEach((productId, qty) {
       final product = _products.firstWhere((p) => p['id'] == productId);
-      total += product['price_fcfa'] * qty;
+      final price = (product['price_fcfa'] as double);
+      total += price * qty;
     });
     return total;
   }
@@ -45,7 +52,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   double get _totalWithInterest {
     return _paymentMethod == 'credit' ? _total * 1.3 : _total;
   }
-
   Future<void> _submitOrder() async {
     if (_cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
